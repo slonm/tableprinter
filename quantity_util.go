@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var units = [...]string{"K", "M", "B", "T"}
+var units = [...]string{"K", "M", "G", "T", "P"}
 
 /*
 references & credits:
@@ -14,7 +14,7 @@ references & credits:
 - https://golang.org/pkg/math/#Modf
 */
 func nearestThousandFormat(num float64) string {
-	if math.Abs(num) < 999.5 {
+	if math.Abs(num) < 1023.5 {
 		xNum := formatNumber(num)
 		xNumStr := xNum[:len(xNum)-3]
 		return xNumStr
@@ -83,8 +83,8 @@ func numberFormat(number float64, decimals int, decPoint, thousandsSep string) s
 	} else if d >= 1 {
 		var x float64
 		for d >= 1 {
-			d, x = math.Modf(d / 1000)
-			x = x * 1000
+			d, x = math.Modf(d / 1024)
+			x = x * 1024
 			ret = strconv.FormatFloat(x, 'f', 0, 64) + ret
 			if d >= 1 {
 				ret = thousandsSep + ret
