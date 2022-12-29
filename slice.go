@@ -11,36 +11,41 @@ type sliceParser struct {
 var emptyStruct = struct{}{}
 
 func (p *sliceParser) Parse(v reflect.Value, filters []RowFilter) ([]string, [][]string, []int) {
-	headers := p.ParseHeaders(v)
-	rows, nums := p.ParseRows(v, filters)
+	headers, mapKeys := p.ParseHeaders(v)
+	rows, nums := p.ParseRows(v, mapKeys, filters)
 	return headers, rows, nums
 }
 
-func (p *sliceParser) ParseRows(v reflect.Value, filters []RowFilter) (rows [][]string, nums []int) {
+func (p *sliceParser) ParseRows(v reflect.Value, mapKeys []reflect.Value, filters []RowFilter) (rows [][]string, nums []int) {
 	for i, n := 0, v.Len(); i < n; i++ {
 		item := indirectValue(v.Index(i))
 		if !CanAcceptRow(item, filters) {
 			continue
 		}
 
-		if item.Kind() != reflect.Struct {
+		if item.Kind() == reflect.Struct {
+			r, c := getRowFromStruct(item, p.TagsOnly)
+
+			nums = append(nums, c...)
+
+			rows = append(rows, r)
+		} else if item.Kind() == reflect.Map {
+			p := WhichParser(item.Type()).(*mapParser)
+			rs, cs := p.ParseRows(item, mapKeys, filters)
+			rows = append(rows, rs...)
+			nums = append(nums, cs...)
+		} else {
 			// if not struct, don't search its fields, just put a row as it's.
 			c, r := extractCells(i, emptyHeader, indirectValue(item), p.TagsOnly)
 			rows = append(rows, r)
 			nums = append(nums, c...)
-			continue
 		}
-		r, c := getRowFromStruct(item, p.TagsOnly)
-
-		nums = append(nums, c...)
-
-		rows = append(rows, r)
 	}
 
 	return
 }
 
-func (p *sliceParser) ParseHeaders(v reflect.Value) (headers []string) {
+func (p *sliceParser) ParseHeaders(v reflect.Value) (headers []string, mapKeys []reflect.Value) {
 	tmp := make(map[reflect.Type]struct{})
 
 	for i, n := 0, v.Len(); i < n; i++ {
@@ -51,12 +56,19 @@ func (p *sliceParser) ParseHeaders(v reflect.Value) (headers []string) {
 		if _, ok := tmp[itemTyp]; !ok {
 			// make headers once per type.
 			tmp[itemTyp] = emptyStruct
-			hs := extractHeadersFromStruct(itemTyp, p.TagsOnly)
-			if len(hs) == 0 {
-				continue
-			}
-			for _, h := range hs {
-				headers = append(headers, h.Name)
+			if itemTyp.Kind() == reflect.Struct {
+				hs := extractHeadersFromStruct(itemTyp, p.TagsOnly)
+				if len(hs) == 0 {
+					continue
+				}
+				for _, h := range hs {
+					headers = append(headers, h.Name)
+				}
+			} else if itemTyp.Kind() == reflect.Map {
+				p := WhichParser(itemTyp).(*mapParser)
+				hs := p.ParseHeaders(item, p.Keys(item))
+				headers = append(headers, hs...)
+				mapKeys = p.Keys(item)
 			}
 		}
 	}

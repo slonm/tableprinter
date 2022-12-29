@@ -33,7 +33,7 @@ func (p *structParser) Parse(v reflect.Value, filters []RowFilter) ([]string, []
 }
 
 func (p *structParser) ParseHeaders(v reflect.Value) []string {
-	hs := extractHeadersFromStruct(v.Type(), true)
+	hs := extractHeadersFromStruct(v.Type(), p.TagsOnly)
 	if len(hs) == 0 {
 		return nil
 	}
