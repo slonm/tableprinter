@@ -1,4 +1,4 @@
-module github.com/lensesio/tableprinter
+module github.com/slonm/tableprinter
 
 go 1.19
 
