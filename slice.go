@@ -66,9 +66,9 @@ func (p *sliceParser) ParseHeaders(v reflect.Value) (headers []string, mapKeys [
 				}
 			} else if itemTyp.Kind() == reflect.Map {
 				p := WhichParser(itemTyp).(*mapParser)
-				hs := p.ParseHeaders(item, p.Keys(item))
-				headers = append(headers, hs...)
 				mapKeys = p.Keys(item)
+				hs := p.ParseHeaders(item, mapKeys)
+				headers = append(headers, hs...)
 			}
 		}
 	}
