@@ -3,6 +3,8 @@ package tableprinter
 import (
 	"fmt"
 	"reflect"
+	"sort"
+	"strings"
 )
 
 // Should we have a single parser value its specific types and give input arguments to the funcs, like "keys"
@@ -23,8 +25,23 @@ func (p *mapParser) Parse(v reflect.Value, filters []RowFilter) ([]string, [][]s
 	return headers, rows, numbers
 }
 
-func (p *mapParser) Keys(v reflect.Value) []reflect.Value {
-	return v.MapKeys()
+func (p *mapParser) Keys(v reflect.Value) (keys []reflect.Value) {
+	keys = v.MapKeys()
+	sort.SliceStable(keys, func(i, j int) bool {
+		// support any type, even if it's declared as "interface{}" or pointer to something, we care about this "something"'s value.
+		left := indirectValue(keys[i])
+		if !left.CanInterface() {
+			return false
+		}
+		right := indirectValue(keys[j])
+		if !right.CanInterface() {
+			return false
+		}
+
+		return strings.Compare(stringValue(left), stringValue(right)) < 0
+	})
+
+	return
 }
 
 func extendSlice(slice reflect.Value, typ reflect.Type, max int) reflect.Value {
